@@ -2,9 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const http = require('http');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-
-// ✅ Add your ID and teammate ID here (comma separated)
-const ADMIN_IDS = process.env.ADMIN_IDS.split(',');
+const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const pendingUsers = {};
@@ -66,27 +64,26 @@ bot.on('message', (msg) => {
 function handleNewUser(chatId, userId, phone, name) {
   pendingUsers[userId] = { chatId, phone, name };
 
-  // Tell user to wait
   bot.sendMessage(chatId,
     '✅ Thank you! Please wait a few seconds, we will get back to you with your access details shortly. 🕐',
     { reply_markup: { remove_keyboard: true } }
   );
 
-  // Notify ALL admins
   ADMIN_IDS.forEach(adminId => {
-    bot.sendMessage(adminId.trim(),
-      `🆕 New Request!\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🆔 User ID: ${userId}\n\nReply with:\n/send ${userId} username password`
+    bot.sendMessage(adminId,
+      `🆕 New Request!\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🆔 User ID: ${userId}\n\nReply with:\n/send ${userId} username password tradepassword`
     );
   });
 }
 
-// Any admin sends credentials: /send <userId> <username> <password>
-bot.onText(/\/send (\d+) (\S+) (\S+)/, (msg, match) => {
+// Any admin sends credentials: /send <userId> <username> <password> <tradepassword>
+bot.onText(/\/send (\d+) (\S+) (\S+) (\S+)/, (msg, match) => {
   if (!ADMIN_IDS.includes(msg.chat.id.toString())) return;
 
   const targetUserId = match[1];
   const username = match[2];
   const password = match[3];
+  const tradepassword = match[4];
 
   const user = pendingUsers[targetUserId];
   if (!user) {
@@ -95,12 +92,18 @@ bot.onText(/\/send (\d+) (\S+) (\S+)/, (msg, match) => {
   }
 
   bot.sendMessage(user.chatId,
-    `🎉 Your account is ready!\n\n👤 Username: ${username}\n🔑 Password: ${password}\n\nEnjoy! 🚀`
+    `🎉 Your account is ready!\n\n` +
+    `👤 Username: ${username}\n` +
+    `🔑 Password: ${password}\n` +
+    `🔐 Trade Password: ${tradepassword}\n` +
+    `   _(6-digit code — used when adding your bank details)_\n\n` +
+    `🌐 Site: https://yoursite.com\n\n` +
+    `Enjoy! 🚀`,
+    { parse_mode: 'Markdown' }
   );
 
-  // Notify all admins that credentials were sent
   ADMIN_IDS.forEach(adminId => {
-    bot.sendMessage(adminId.trim(), `✅ Credentials sent to ${user.name} by team!`);
+    bot.sendMessage(adminId, `✅ Credentials sent to ${user.name}!`);
   });
 
   delete pendingUsers[targetUserId];
