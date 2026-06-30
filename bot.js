@@ -2,7 +2,9 @@ const TelegramBot = require('node-telegram-bot-api');
 const http = require('http');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+
+// ✅ Add your ID and teammate ID here (comma separated)
+const ADMIN_IDS = process.env.ADMIN_IDS.split(',');
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const pendingUsers = {};
@@ -28,17 +30,16 @@ bot.onText(/\/start/, (msg) => {
   );
 });
 
-// ✅ Fix 1 — User shares via contact button
+// User shares via contact button
 bot.on('contact', (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const phone = msg.contact.phone_number;
   const name = msg.from.first_name;
-
   handleNewUser(chatId, userId, phone, name);
 });
 
-// ✅ Fix 2 — User types number manually as text
+// User types number manually
 bot.on('message', (msg) => {
   if (msg.contact || msg.text?.startsWith('/')) return;
 
@@ -47,7 +48,6 @@ bot.on('message', (msg) => {
   const name = msg.from.first_name;
   const text = msg.text;
 
-  // Check if it looks like a phone number
   if (text && /^[\d\s\+\-]{7,15}$/.test(text)) {
     handleNewUser(chatId, userId, text, name);
   } else {
@@ -72,15 +72,17 @@ function handleNewUser(chatId, userId, phone, name) {
     { reply_markup: { remove_keyboard: true } }
   );
 
-  // Notify you
-  bot.sendMessage(ADMIN_CHAT_ID,
-    `🆕 New Request!\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🆔 User ID: ${userId}\n\nReply with:\n/send ${userId} username password`
-  );
+  // Notify ALL admins
+  ADMIN_IDS.forEach(adminId => {
+    bot.sendMessage(adminId.trim(),
+      `🆕 New Request!\n\n👤 Name: ${name}\n📱 Phone: ${phone}\n🆔 User ID: ${userId}\n\nReply with:\n/send ${userId} username password`
+    );
+  });
 }
 
-// Admin sends credentials
+// Any admin sends credentials: /send <userId> <username> <password>
 bot.onText(/\/send (\d+) (\S+) (\S+)/, (msg, match) => {
-  if (msg.chat.id.toString() !== ADMIN_CHAT_ID.toString()) return;
+  if (!ADMIN_IDS.includes(msg.chat.id.toString())) return;
 
   const targetUserId = match[1];
   const username = match[2];
@@ -88,7 +90,7 @@ bot.onText(/\/send (\d+) (\S+) (\S+)/, (msg, match) => {
 
   const user = pendingUsers[targetUserId];
   if (!user) {
-    bot.sendMessage(ADMIN_CHAT_ID, '❌ User not found.');
+    bot.sendMessage(msg.chat.id, '❌ User not found.');
     return;
   }
 
@@ -96,6 +98,10 @@ bot.onText(/\/send (\d+) (\S+) (\S+)/, (msg, match) => {
     `🎉 Your account is ready!\n\n👤 Username: ${username}\n🔑 Password: ${password}\n\nEnjoy! 🚀`
   );
 
-  bot.sendMessage(ADMIN_CHAT_ID, `✅ Credentials sent to ${user.name}`);
+  // Notify all admins that credentials were sent
+  ADMIN_IDS.forEach(adminId => {
+    bot.sendMessage(adminId.trim(), `✅ Credentials sent to ${user.name} by team!`);
+  });
+
   delete pendingUsers[targetUserId];
 });
