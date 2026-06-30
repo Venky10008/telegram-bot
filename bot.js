@@ -1,3 +1,10 @@
+const http = require('http');
+
+// Keep-alive server
+http.createServer((req, res) => {
+  res.write('Bot is running!');
+  res.end();
+}).listen(3000);
 const TelegramBot = require('node-telegram-bot-api');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
