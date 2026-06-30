@@ -97,7 +97,7 @@ bot.onText(/\/send (\d+) (\S+) (\S+) (\S+)/, (msg, match) => {
     `🔑 Password: ${password}\n` +
     `🔐 Trade Password: ${tradepassword}\n` +
     `   _(6-digit code — used when adding your bank details)_\n\n` +
-    `🌐 Site: https://dreampower1.ru/login` +
+    `🌐 Site: https://dreampower1.ru/login\n\n` +
     `Enjoy! 🚀`,
     { parse_mode: 'Markdown' }
   );
