@@ -4,7 +4,7 @@ const http = require('http');
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
 // ✅ Add your ID and teammate ID here (comma separated)
-const ADMIN_IDS = process.env.ADMIN_IDS.split(',');
+const ADMIN_IDS = (process.env.ADMIN_CHAT_ID || '').split(',').map(id => id.trim()).filter(Boolean);
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const pendingUsers = {};
